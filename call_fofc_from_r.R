@@ -12,12 +12,17 @@ fofc <- function(df, TestType = "TETRAD_WISHART", fofcAlgorithm = "GAP",
     TestTypePath <- "edu/cmu/tetrad/search/TestType"
 
     ## Instantiate fofc object.
-    fofc_instance <- .jnew("edu/cmu/tetrad/search/FindOneFactorClusters", df, J(TestTypePath)$TETRAD_WISHART, J(fofcAlgorithmPath)$Algorithm$GAP, as.double(alpha))
+#    fofc_instance <- .jnew("edu/cmu/tetrad/search/FindOneFactorClusters", df, J(TestTypePath)$TETRAD_WISHART, J(fofcAlgorithmPath)$Algorithm$GAP, as.double(alpha))
 
-    # Search
+    fofc_instance <- .jnew("edu/cmu/tetrad/search/FindOneFactorClusters", df, .jfield(TestTypePath,name=TestType), .jfield(paste(fofcAlgorithmPath, "$Algorithm", sep=""), name=fofcAlgorithm), as.double(alpha))
+
+    ## Search
     fofc_graph <- .jcall(fofc_instance, "Ledu/cmu/tetrad/graph/Graph;", "search")
 
-    #List to contain results of fofc search.
+##TODO: Get this line working. currently fails to find getClusters method.
+##    fofc_partition = .jcall(fofc_graph, "Ledu/cmu/tetrad/search/FindOneFactorClusters", "getClusters")
+
+    ##List to contain results of fofc search.
     fofc <- list()
 
     if(!is.null(e <- .jgetEx())){
@@ -41,7 +46,7 @@ fofc <- function(df, TestType = "TETRAD_WISHART", fofcAlgorithm = "GAP",
     return(fofc)
 }
 
-    # Data Frame to Tetrad Dataset
+## Data Frame to Tetrad Dataset
 data<-read.csv(file="~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/depression_scale.csv")[,-1]
 
 data<-data[complete.cases(data),]
