@@ -1,0 +1,10 @@
+Scale Validation:
+
+Testing to see if a scale "validates" on data.
+
+Unitarity (assoc. with one factor). Generally done using confirmatory
+factor analysis. Could be improved/fixed using FOFC.
+
+Question: Even if the variables associate with one factor, how do we
+know that the factor in question is actually the one we want to
+measure?
