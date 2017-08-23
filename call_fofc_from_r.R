@@ -1,4 +1,6 @@
 library(rJava)
+library(rcausal)
+
 
 fofc <- function(df, TestType = "TETRAD_WISHART", fofcAlgorithm = "GAP", 
     alpha = .01, java.parameters = NULL){
@@ -19,16 +21,13 @@ fofc <- function(df, TestType = "TETRAD_WISHART", fofcAlgorithm = "GAP",
     ## Search
     fofc_graph <- .jcall(fofc_instance, "Ledu/cmu/tetrad/graph/Graph;", "search")
 
-##TODO: Get this line working. currently fails to find getClusters method.
-##    fofc_partition = .jcall(fofc_graph, "Ledu/cmu/tetrad/search/FindOneFactorClusters", "getClusters")
-
     ##List to contain results of fofc search.
     fofc <- list()
 
     if(!is.null(e <- .jgetEx())){
         .jclear()
-        fges$nodes <- colnames(df)
-        fges$edges <- NULL
+        fofc$nodes <- colnames(df)
+        fofc$edges <- NULL
         print("Java exception was raised")
         print(e)
     }else{
@@ -48,7 +47,6 @@ fofc <- function(df, TestType = "TETRAD_WISHART", fofcAlgorithm = "GAP",
 
 ## Data Frame to Tetrad Dataset
 data<-read.csv(file="~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/depression_scale.csv")[,-1]
-
 data<-data[complete.cases(data),]
 
 fofc(loadMixedData(df=data, 0))
@@ -57,12 +55,6 @@ fofc(loadMixedData(df=data, 0))
 
 
 #####Helper methods
-
-
-
-
-
-
 
 ############## From R-causal https://github.com/bd2kccd/r-causal ###############
 loadContinuousData <- function(df){
