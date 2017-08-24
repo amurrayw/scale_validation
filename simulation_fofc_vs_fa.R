@@ -1,6 +1,8 @@
 library(pcalg)
 library(graph)
 library(igraph)
+library(nFactors)
+
 
 setwd("~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/")
 
@@ -8,7 +10,21 @@ setwd("~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/")
 #score.fa(factanal(x=create.dataset(), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"))
 
 
+##table(replicate(unlist(nScree(x=create.dataset(n=1000), model="factors")$Components), n=1000))
+
+
+table(replicate(as.numeric(names(which.max(table(unlist(nScree(x=create.dataset(n=1000), model="factors")$Components))))), n=1000))
+
+
+
+
 hist(replicate(score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.3), n=1000)[3,])
+hist(replicate(score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.5), n=1000)[3,])
+hist(replicate(score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.7), n=1000)[3,])
+
+
+
+#hist(replicate(score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.3), n=1000)[3,])
 
 
 #set.seed(100);prune.fa.paths(factanal(x=create.dataset(n=1000), factors=2), cut.off=.3)[, c(10,9)]
@@ -73,39 +89,61 @@ score.fa <- function(fa.model, cut.off=.3, true.graph){
 
 		graph.comparison <- (compareGraphs(fa.model, true.graph))
 
-		##Handles the case where, due to a mislabeling (i.e., fa assigns all cluster 2 elements to cluster 1 and vice versa), FA gets everthing wrong instead of everything right.
-		## The third element in the vector graph.comparison is the true discovery rate. Note that this fix only solves the problem for a pair of latents. A triple will require something more elaborate. 
-
-		return(address.mislab(graph.comparison, fa.model, true.graph, fa.model.backup, n.latents))
+		##Handles the case where, due to a mislabeling (i.e., fa assigns all cluster 2 elements to cluster 1 and vice versa), FA gets more wrong than it should.
+		return(address.mislab(graph.comparison, fa.model, true.graph, fa.model.backup, n.latents, n.calls=1, max.calls=permutation(n.latents, n.latents)^2, best.graph.comparison=graph.comparison))
 	}
 	return(NULL)
 }
 
-## Keeps trying until the true discovery rate is greater than 0.
-address.mislab <- function(graph.comparison,  fa.model=fa.model, true.graph=true.graph, fa.model.backup=fa.model.backup, n.latents=n.latents){
-		if(graph.comparison[3]==0){
-				new.order <- permute.latent.col(fa.model.backup, n.latents=n.latents)
-				fa.model <- igraph.to.graphNEL(graph.adjacency(fa.model.backup[,new.order]))
-			return(address.mislab(compareGraphs(fa.model, true.graph), fa.model, true.graph, fa.model.backup, n.latents))
-		}
-		else{
-			return(graph.comparison)
-		}
+## Checks every permutation of labels for latent variables in case mislabeling is harming FA unjustly.
+address.mislab <- function(graph.comparison, fa.model, true.graph, fa.model.backup, n.latents, n.calls, max.calls=100, best.graph.comparison){
+
+	n.var <- ncol(fa.model.backup)-n.latents
+
+	permutations <- rbind(1:n.latents, permute::allPerms(1:n.latents))+n.var
+
+	comparisons <- t(apply(permutations, 1, function(new.order){compareGraphs(igraph.to.graphNEL(graph.adjacency(fa.model.backup[,c(1:n.var, new.order)])), true.graph)}))
+	
+	## The third column in the matrix comparisons are true discovery rates. Then select the first max row (in case of a tie).
+	best.graph.comparison <- comparisons[which(comparisons[,3] == max(comparisons[,3]))[1], ]
+
+	return(best.graph.comparison)
 }
 
-#score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.5)
+score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.5)
+
+
+## Keeps trying until the true discovery rate is as high as possible (or if the max number of attempts at maximization has been reached).
+##address.mislab <- function(graph.comparison,  fa.model=fa.model, true.graph=true.graph, fa.model.backup=fa.model.backup, n.latents=n.latents, n.calls=1, max.calls=100, best.graph.comparison){
+##		## The third element in the vector graph.comparison is the true discovery rate. 
+##		if(graph.comparison[3]>best.graph.comparison[3]){best.graph.comparison <- graph.comparison}
+
+
+##		if(n.calls<max.calls && graph.comparison[3]<=best.graph.comparison[3]){
+##				new.order <- permute.latent.col(fa.model.backup, n.latents=n.latents)
+##				fa.model <- igraph.to.graphNEL(graph.adjacency(fa.model.backup[,new.order]))
+##			return(address.mislab(compareGraphs(fa.model, true.graph), fa.model, true.graph, fa.model.backup, n.latents, n.calls+1, best.graph.comparison=best.graph.comparison))
+##		}
+##		else{
+##			return(best.graph.comparison)
+##		}
+##}
 
 
 ## Need to do this so that a misslabeling won't harm results of FA.
-permute.latent.col <- function(fa.model, n.latents){
+##permute.latent.col <- function(fa.model, n.latents){
 
-	n.var <- ncol(fa.model)-n.latents
-	permute <- sample((n.var+1):ncol(fa.model), replace=FALSE, size=n.latents)
+##	n.var <- ncol(fa.model)-n.latents
+##	permute <- sample((n.var+1):ncol(fa.model), replace=FALSE, size=n.latents)
 
-	new.order <- c(1:n.var, permute)
+##	new.order <- c(1:n.var, permute)
 
-	return(new.order)
-}
+##	return(new.order)
+##}
+
+##permutation = function(n, x) {
+##  return(factorial(n)/factorial(n-x))
+##}
 
 
 prune.fa.paths <- function(fa.model, cut.off=.3){
@@ -162,3 +200,7 @@ generate.data.from.dag <- function(graph, n=100, errDist="normal"){
 	
 	return(generated.data)
 }
+
+
+
+
