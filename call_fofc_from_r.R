@@ -46,10 +46,10 @@ fofc <- function(df, TestType = "TETRAD_WISHART", fofcAlgorithm = "GAP",
 }
 
 ## Data Frame to Tetrad Dataset
-data<-read.csv(file="~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/depression_scale.csv")[,-1]
-data<-data[complete.cases(data),]
+#data<-read.csv(file="~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/depression_scale.csv")[,-1]
+#data<-data[complete.cases(data),]
 
-fofc(loadMixedData(df=data, 0))
+#fofc(loadMixedData(df=data, 0))
 
 
 

@@ -4,8 +4,8 @@ library(igraph)
 library(nFactors)
 
 
-setwd("~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/")
-
+#setwd("~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/")
+source("call_fofc_from_r.R")
 
 #score.fa(factanal(x=create.dataset(), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"))
 
@@ -16,6 +16,10 @@ setwd("~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/")
 table(replicate(as.numeric(names(which.max(table(unlist(nScree(x=create.dataset(n=1000), model="factors")$Components))))), n=1000))
 
 
+table(replicate(as.numeric(names(which.max(table(unlist(nScree(x=create.dataset(n=1000, file="graph1.r.txt"), model="factors")$Components))))), n=1000))
+
+
+hist(replicate(score.fa(factanal(x=create.dataset(n=1000, file="graph1.r.txt"), factors=3), true.graph=as(read.dag("graph1.r.txt"), "matrix"), cut.off=.3), n=1000)[3,])
 
 
 hist(replicate(score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.3), n=1000)[3,])
@@ -39,35 +43,75 @@ create.dataset <- function(file="sim_graph_2_lat_pure_measure.r.txt", n=1000){
 
 }
 
-build.fofc model <- function(){
+
+build.fofc.model <- function(data, TestType = "TETRAD_WISHART", fofcAlgorithm = "GAP", 
+    alpha = .01){
+
+	fofc <- fofc(loadContinuousData(df=data), TestType, fofcAlgorithm, alpha)	
+
+	nodes <- fofc$nodes
+
+	#print(nodes)
+	edges <- do.call(rbind, lapply(strsplit(fofc$edges, fixed=T, split=" "), function(edgestr){return(edgestr[c(1,3)])}))
+##
+#	print(edges)
 
 
+	adjMat <- matrix(nrow=length(nodes), ncol=length(nodes), data=0)
+	adjMat <- data.frame(adjMat)
+	names(adjMat) <- nodes
+
+	return(igraph.to.graphNEL(graph.adjacency(as.matrix(assemb.matrix(adjMat, edges)))))
 }
+
+assemb.matrix <- function(empty.mat, edge.list){
+	result <- empty.mat
+
+	for(i in 1:nrow(edge.list)){
+		cause <- which(names(empty.mat)%in%edge.list[i, 1])
+		effect <- which(names(empty.mat)%in%edge.list[i, 2])
+		result[cause, effect] <- 1
+	}
+	
+	return(result)
+}
+
 
 ## TODO: Implement this (is still the old MIMIC scoring function).
 score.fofc <- function(fofc.model, true.graph){
 	
 	adj.matrix.true <- data.frame(true.graph)
 	
-	adj.matrix.mimic <- data.frame(as(mimic.model, "matrix"))
+	adj.matrix.fofc <- data.frame(as(fofc.model, "matrix"))
 	
-	n.latents.truth <- grep(pattern="[L:digit:]",
+	n.latents.truth <- grep(pattern="L",
 	 names(adj.matrix.true))
 
-	n.latents.mimic <- grep(pattern="[L:digit:]",
-	 names(adj.matrix.mimic))
+	n.latents.fofc <- grep(pattern="L",
+	 names(adj.matrix.fofc))
 	
 	true.graph<-igraph.to.graphNEL(graph.adjacency(true.graph))
 
+	fofc.model.backup <- adj.matrix.fofc
+
+	#fofc.model <- igraph.to.graphNEL(graph.adjacency(fofc.model))
 
 	# If the mimic.model found has a different numnber of latents than the
 	# true graph, then cannot calculate tpr, fpr, tdr. Have therefore treated
 	# those as NULL objects. (i.e., as with FA, correct n.latents is assumed)
-	if(length(nodes(mimic.model)) == length(nodes(true.graph))){
-		return(compareGraphs(mimic.model, true.graph))
+	if(length(nodes(fofc.model)) == length(nodes(true.graph))){
+
+		graph.comparison <- compareGraphs(fofc.model, true.graph)
+
+		return(address.mislab(graph.comparison, fafofc.model, true.graph, fofc.model.backup, n.latents.fofc, n.calls, max.calls=100, best.graph.comparison))
 	}
 	return(NULL)
 }
+
+score.fofc(build.fofc.model(create.dataset(n=1000, file="graph1.r.txt")), true.graph=as(read.dag("graph1.r.txt"), "matrix"))
+
+
+
 
 score.fa <- function(fa.model, cut.off=.3, true.graph){
 	
@@ -192,6 +236,8 @@ generate.data.from.dag <- function(graph, n=100, errDist="normal"){
 	top.sort <- topological.sort(igraph.from.graphNEL(graph))
 	var.names <- nodes(graph)[top.sort]
 	
+	##TODO: Let edge weights vary (currently all are 1). Error distribution is always std. normal.
+	## Idea: if adj.mat has a 1, replace with runif(0.001,1,1).
 	graph<-igraph.to.graphNEL(graph.adjacency(as(graph, "matrix")[var.names,
 	 var.names]))
 	
