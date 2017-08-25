@@ -2,7 +2,7 @@ library(pcalg)
 library(graph)
 library(igraph)
 library(nFactors)
-
+library(rlist)
 
 #setwd("~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/")
 source("call_fofc_from_r.R")
@@ -18,8 +18,19 @@ table(replicate(as.numeric(names(which.max(table(unlist(nScree(x=create.dataset(
 
 table(replicate(as.numeric(names(which.max(table(unlist(nScree(x=create.dataset(n=1000, file="graph1.r.txt"), model="factors")$Components))))), n=1000))
 
-
+par(mfrow=c(2,2))
 hist(replicate(score.fa(factanal(x=create.dataset(n=1000, file="graph1.r.txt"), factors=3), true.graph=as(read.dag("graph1.r.txt"), "matrix"), cut.off=.3), n=1000)[3,])
+
+
+hist(replicate(score.fofc(build.fofc.model(create.dataset(n=1000, file="graph1.r.txt")), true.graph=as(read.dag("graph1.r.txt"), "matrix")), n=1000)[3,])
+
+
+
+##TODO: Need to also account for getting rotation correct (promax is supposed to be used when latents are "correlated" with one another). Should test with impure measures (i.e., correlation is through observed variables, not latents).
+ plot(igraph.to.graphNEL(graph.adjacency(prune.fa.paths(factanal(x=create.dataset(n=1000, file="graph1.r.txt"), factors=3, rotation="promax"), .3))))
+
+score.fa(factanal(x=create.dataset(n=1000, file="graph1.r.txt"), factors=3, rotation="promax"), true.graph=as(read.dag("graph1.r.txt"), "matrix"), cut.off=.3) 
+
 
 
 hist(replicate(score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.3), n=1000)[3,])
@@ -28,10 +39,30 @@ hist(replicate(score.fa(factanal(x=create.dataset(n=1000), factors=2), true.grap
 
 
 
+
+
+handle.null.fofc <- function(fofc.sim.object){
+
+	if(class=="matrix"){return(fofc.sim.object)}
+	else{
+		fofc.sim.object <- list.clean(fofc.sim.object, is.null)
+				
+	}
+}
+
+
+
+
+
+
+
 #hist(replicate(score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.3), n=1000)[3,])
 
 
 #set.seed(100);prune.fa.paths(factanal(x=create.dataset(n=1000), factors=2), cut.off=.3)[, c(10,9)]
+
+
+
 
 
 create.dataset <- function(file="sim_graph_2_lat_pure_measure.r.txt", n=1000){
@@ -77,22 +108,32 @@ assemb.matrix <- function(empty.mat, edge.list){
 }
 
 
-## TODO: Implement this (is still the old MIMIC scoring function).
+## TODO: Need to fix scoring. Currently there seems to be an issue with the way latents are named. Both search model and true graph need to use same names for all nodes. Should also change/check this in FA scoring function.
 score.fofc <- function(fofc.model, true.graph){
 	
 	adj.matrix.true <- data.frame(true.graph)
 	
 	adj.matrix.fofc <- data.frame(as(fofc.model, "matrix"))
 	
-	n.latents.truth <- grep(pattern="L",
-	 names(adj.matrix.true))
+	n.latents.truth <- length(grep(pattern="L",
+	 names(adj.matrix.true)))
 
-	n.latents.fofc <- grep(pattern="L",
-	 names(adj.matrix.fofc))
+	location.latents.true <- grep(pattern="L", names(adj.matrix.true))
+
+	## Strip out latent-latent edges as FA can't find these.
+	true.graph[location.latents.true, location.latents.true] <- 0
 	
+	true.graph<-cbind(true.graph, true.graph[,location.latents.true])
+	true.graph<-true.graph[,-c(location.latents.true)]
+	true.graph<-rbind(true.graph, true.graph[location.latents.true,])
+	true.graph<-true.graph[-c(location.latents.true),]
+
+	n.latents.fofc <- length(location.latents.true)
+
 	true.graph<-igraph.to.graphNEL(graph.adjacency(true.graph))
 
-	fofc.model.backup <- adj.matrix.fofc
+	## Needs to be boolean, not integer for address.mislab function (converting adj.mat to graph fails otherwise).
+	fofc.model.backup <- adj.matrix.fofc>0
 
 	#fofc.model <- igraph.to.graphNEL(graph.adjacency(fofc.model))
 
@@ -101,15 +142,17 @@ score.fofc <- function(fofc.model, true.graph){
 	# those as NULL objects. (i.e., as with FA, correct n.latents is assumed)
 	if(length(nodes(fofc.model)) == length(nodes(true.graph))){
 
-		graph.comparison <- compareGraphs(fofc.model, true.graph)
+#		par(mfrow=c(2,2)); plot(fofc.model); plot(true.graph)
 
-		return(address.mislab(graph.comparison, fafofc.model, true.graph, fofc.model.backup, n.latents.fofc, n.calls, max.calls=100, best.graph.comparison))
+		graph.comparison <- compareGraphs(fofc.model, true.graph)
+		return(address.mislab(graph.comparison=graph.comparison, fa.model=fofc.model, true.graph=true.graph, fa.model.backup=fofc.model.backup, n.latents=n.latents.fofc, n.calls=n.calls, max.calls=100, best.graph.comparison=best.graph.comparison))
 	}
-	return(NULL)
+	## Instead of returning null as before, now return a tpr of 0, fpr of 1, and tdr 0. TODO: decide if this makes more sense than returning null.
+	return(c(0,1,0))
 }
 
-score.fofc(build.fofc.model(create.dataset(n=1000, file="graph1.r.txt")), true.graph=as(read.dag("graph1.r.txt"), "matrix"))
 
+#score.fofc(build.fofc.model(create.dataset(n=1000, file="graph1.r.txt")), true.graph=as(read.dag("graph1.r.txt"), "matrix"))
 
 
 
@@ -125,6 +168,22 @@ score.fa <- function(fa.model, cut.off=.3, true.graph){
 	fa.model <- prune.fa.paths(fa.model, cut.off=cut.off)
 
 	fa.model.backup <- fa.model	
+
+##print(true.graph)
+
+
+
+
+	location.latents.true <- grep(pattern="^L", x=names(data.frame(true.graph)))
+#print(location.latents.true)
+	## Strip out latent-latent edges as FA can't find these.
+	true.graph[location.latents.true, location.latents.true] <- 0
+	
+	true.graph<-cbind(true.graph, true.graph[,location.latents.true])
+	true.graph<-true.graph[,-c(location.latents.true)]
+	true.graph<-rbind(true.graph, true.graph[location.latents.true,])
+	true.graph<-true.graph[-c(location.latents.true),]
+
 
 	fa.model <- igraph.to.graphNEL(graph.adjacency(fa.model))
 	true.graph <- igraph.to.graphNEL(graph.adjacency(true.graph))
@@ -146,15 +205,21 @@ address.mislab <- function(graph.comparison, fa.model, true.graph, fa.model.back
 
 	permutations <- rbind(1:n.latents, permute::allPerms(1:n.latents))+n.var
 
-	comparisons <- t(apply(permutations, 1, function(new.order){compareGraphs(igraph.to.graphNEL(graph.adjacency(fa.model.backup[,c(1:n.var, new.order)])), true.graph)}))
-	
+	comparisons <- t(apply(permutations, 1, function(new.order){compareGraphs(igraph.to.graphNEL(graph.adjacency(fa.model.backup[c(1:n.var, new.order),])), true.graph)}))
+##print("fa.model.backup")
+##print(fa.model.backup)
+
+##print("true.graph")
+##print(as(true.graph, "matrix"))
+
 	## The third column in the matrix comparisons are true discovery rates. Then select the first max row (in case of a tie).
 	best.graph.comparison <- comparisons[which(comparisons[,3] == max(comparisons[,3]))[1], ]
-
+plot(fa.model)
 	return(best.graph.comparison)
 }
 
-score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.5)
+
+#score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.5)
 
 
 ## Keeps trying until the true discovery rate is as high as possible (or if the max number of attempts at maximization has been reached).
@@ -211,7 +276,8 @@ prune.fa.paths <- function(fa.model, cut.off=.3){
 	adj.mat[(length(var.names)+1):(length(var.names)+n.latents),
 	 (length(var.names)+1):(length(var.names)+n.latents)] <- FALSE
 	
-	return(adj.mat)
+##Return transpose of matrix so row/column cause-effect agrees with format used by igraph/graphNEL.
+	return(t(adj.mat))
 	
 }
 
