@@ -7,7 +7,6 @@ generate.measurement.model <- function(n.latents=1, n.measures.per.latent=4, n.i
 		created.latents[[i]] <- create.latent(latent.name=paste("L", i, sep=""),n.measures=n.measures.per.latent, naming.index=n.measures.per.latent*(i-1))
 	}
 
-##TODO: Issue. Need to prevent 1->3 and 3->1 at same time. Also need to prevent 1->3 and 1->3 at same time.
 	possible.permutations <- produce.permutations(1:n.latents, rand.remove.mirrors=TRUE)
 
 	chosen.permutations <- possible.permutations[sample(1:nrow(possible.permutations), replace=FALSE, size=n.latent.latent.edges), ]
@@ -42,10 +41,10 @@ generate.measurement.model <- function(n.latents=1, n.measures.per.latent=4, n.i
 
 }
 
-generate.measurement.model(2, n.measures.per.latent=4)
-generate.measurement.model(2, n.measures.per.latent=4, n.latent.latent.edges=1)
-generate.measurement.model(3, n.measures.per.latent=4, n.latent.latent.edges=1)
-plot(generate.measurement.model(3, n.measures.per.latent=4, n.latent.latent.edges=2))
+#generate.measurement.model(2, n.measures.per.latent=4)
+#generate.measurement.model(2, n.measures.per.latent=4, n.latent.latent.edges=1)
+#generate.measurement.model(3, n.measures.per.latent=4, n.latent.latent.edges=1)
+#plot(generate.measurement.model(3, n.measures.per.latent=4, n.latent.latent.edges=2))
 
 
 create.latent <- function(latent.name="L1", n.measures=4, naming.index=1){
@@ -124,6 +123,7 @@ produce.permutations <- function(vector, choose=2, rand.remove.mirrors=FALSE){
 		}
 	}
 
+	## Removes cyclic inducing edges from being present at the same time (e.g., 1->3 and 3->1).
 	might.remove <- c()
 	if(rand.remove.mirrors){
 		for(i in 1:nrow(perm)){
@@ -136,7 +136,6 @@ produce.permutations <- function(vector, choose=2, rand.remove.mirrors=FALSE){
 	}
 	return(perm)
 }
-##produce.permutations(1:3, rand.remove.mirrors=TRUE)
 
 
 
