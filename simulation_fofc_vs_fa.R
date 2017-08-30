@@ -9,7 +9,7 @@ library(rlist)
 
 #setwd("~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/")
 source("call_fofc_from_r.R")
-
+source("generate_random_model.R")
 
 
 create.dataset <- function(file="sim_graph_2_lat_pure_measure.r.txt", n=1000, unif.min =1, unif.max=1){
@@ -41,17 +41,17 @@ build.fofc.model <- function(data, TestType = "TETRAD_WISHART", fofcAlgorithm = 
 	return(igraph.to.graphNEL(graph.adjacency(as.matrix(assemb.matrix(adjMat, edges)))))
 }
 
-assemb.matrix <- function(empty.mat, edge.list){
-	result <- empty.mat
-	if(length(edge.list)==0){return(result)}
-	for(i in 1:nrow(edge.list)){
-		cause <- which(names(empty.mat)%in%edge.list[i, 1])
-		effect <- which(names(empty.mat)%in%edge.list[i, 2])
-		result[cause, effect] <- 1
-	}
+##assemb.matrix <- function(empty.mat, edge.list){
+##	result <- empty.mat
+##	if(length(edge.list)==0){return(result)}
+##	for(i in 1:nrow(edge.list)){
+##		cause <- which(names(empty.mat)%in%edge.list[i, 1])
+##		effect <- which(names(empty.mat)%in%edge.list[i, 2])
+##		result[cause, effect] <- 1
+##	}
 	
-	return(result)
-}
+##	return(result)
+##}
 
 
 score.fofc <- function(fofc.model, true.graph){
