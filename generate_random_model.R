@@ -7,17 +7,46 @@ generate.measurement.model <- function(n.latents=1, n.measures.per.latent=4, n.i
 		created.latents[[i]] <- create.latent(latent.name=paste("L", i, sep=""),n.measures=n.measures.per.latent, naming.index=n.measures.per.latent*(i-1))
 	}
 
+##TODO: Issue. Need to prevent 1->3 and 3->1 at same time. Also need to prevent 1->3 and 1->3 at same time.
+	possible.permutations <- produce.permutations(1:n.latents, rand.remove.mirrors=TRUE)
 
-	
-	
-	latent.edges.to.add <- rbind(latent.edges.to.add, )
+	chosen.permutations <- possible.permutations[sample(1:nrow(possible.permutations), replace=FALSE, size=n.latent.latent.edges), ]
 
+	if(is.vector(chosen.permutations)){
 
-	return(created.latents)
+		created.latents[[chosen.permutations[1]]] <- connect.latents(created.latents[[chosen.permutations[1]]], created.latents[[chosen.permutations[2]]])
+	}
+	else{
+	for(i in 1:nrow(chosen.permutations)){
+		if(nrow(chosen.permutations)==0){break}
+		cause <- chosen.permutations[i, 1]
+		effect <- chosen.permutations[i, 2]
+
+		created.latents[[cause]] <- connect.latents(created.latents[[cause]], created.latents[[effect]])
+
+	}
+}
+
+	master.nodes <- unique(unlist(lapply(created.latents, function(cluster){return(cluster$nodes)})))
+	master.edges <- unlist(lapply(created.latents, function(cluster){return(cluster$edges)}))
+
+	result.graph <- convert.list.to.graph(list(nodes=master.nodes, edges=master.edges))
+
+	## Graph has a cycle if can't tsort, tsort won't return all nodes, so length diff. implies regen. graph. Will have to see if performance is good enough as complexity of model increases.
+	if(length(topological.sort(igraph.from.graphNEL(result.graph)))!=length(nodes(result.graph))){
+		return(generate.measurement.model(n.latents=n.latents, n.measures.per.latent=n.measures.per.latent, n.impurities=n.impurities, n.latent.latent.edges=n.latent.latent.edges))
+	}
+	else{return(result.graph)}
 
 
 
 }
+
+generate.measurement.model(2, n.measures.per.latent=4)
+generate.measurement.model(2, n.measures.per.latent=4, n.latent.latent.edges=1)
+generate.measurement.model(3, n.measures.per.latent=4, n.latent.latent.edges=1)
+plot(generate.measurement.model(3, n.measures.per.latent=4, n.latent.latent.edges=2))
+
 
 create.latent <- function(latent.name="L1", n.measures=4, naming.index=1){
 
@@ -84,6 +113,31 @@ assemb.matrix <- function(empty.mat, edge.list){
 	
 	return(result)
 }
+
+
+produce.permutations <- function(vector, choose=2, rand.remove.mirrors=FALSE){
+	perm <- c()
+	for(i in vector){
+		for(j in vector){
+			if(i==j){next}
+			else{perm <- rbind(perm, c(i, j))}
+		}
+	}
+
+	might.remove <- c()
+	if(rand.remove.mirrors){
+		for(i in 1:nrow(perm)){
+			for(j in 1:nrow(perm)){
+				if(i>=j){next}
+				else if(sum(perm[i,] %in% perm[j,])==choose){might.remove <- c(might.remove, sample(c(i, j), size=1))}
+			}			
+		}
+		return(perm[-unique(might.remove),])
+	}
+	return(perm)
+}
+##produce.permutations(1:3, rand.remove.mirrors=TRUE)
+
 
 
 
