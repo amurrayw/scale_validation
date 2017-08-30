@@ -4,70 +4,17 @@ library(igraph)
 library(nFactors)
 library(rlist)
 
+##TODO: changing edge weights doesn't produce results that make sense for either FA or FOFC. 
+## There must be something going wrong in the igraph->graphNEL part of the project. Continue sims without varying edge coef. for now.
+
 #setwd("~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/")
 source("call_fofc_from_r.R")
 
-#score.fa(factanal(x=create.dataset(), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"))
 
 
-##table(replicate(unlist(nScree(x=create.dataset(n=1000), model="factors")$Components), n=1000))
+create.dataset <- function(file="sim_graph_2_lat_pure_measure.r.txt", n=1000, unif.min =1, unif.max=1){
 
-
-table(replicate(as.numeric(names(which.max(table(unlist(nScree(x=create.dataset(n=1000), model="factors")$Components))))), n=1000))
-
-
-table(replicate(as.numeric(names(which.max(table(unlist(nScree(x=create.dataset(n=1000, file="graph1.r.txt"), model="factors")$Components))))), n=1000))
-
-par(mfrow=c(2,2))
-hist(replicate(score.fa(factanal(x=create.dataset(n=1000, file="graph1.r.txt"), factors=3), true.graph=as(read.dag("graph1.r.txt"), "matrix"), cut.off=.3), n=1000)[3,])
-
-
-hist(replicate(score.fofc(build.fofc.model(create.dataset(n=1000, file="graph1.r.txt")), true.graph=as(read.dag("graph1.r.txt"), "matrix")), n=1000)[3,])
-
-
-
-##TODO: Need to also account for getting rotation correct (promax is supposed to be used when latents are "correlated" with one another). Should test with impure measures (i.e., correlation is through observed variables, not latents).
- plot(igraph.to.graphNEL(graph.adjacency(prune.fa.paths(factanal(x=create.dataset(n=1000, file="graph1.r.txt"), factors=3, rotation="promax"), .3))))
-
-score.fa(factanal(x=create.dataset(n=1000, file="graph1.r.txt"), factors=3, rotation="promax"), true.graph=as(read.dag("graph1.r.txt"), "matrix"), cut.off=.3) 
-
-
-
-hist(replicate(score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.3), n=1000)[3,])
-hist(replicate(score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.5), n=1000)[3,])
-hist(replicate(score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.7), n=1000)[3,])
-
-
-
-
-
-handle.null.fofc <- function(fofc.sim.object){
-
-	if(class=="matrix"){return(fofc.sim.object)}
-	else{
-		fofc.sim.object <- list.clean(fofc.sim.object, is.null)
-				
-	}
-}
-
-
-
-
-
-
-
-#hist(replicate(score.fa(factanal(x=create.dataset(n=1000), factors=2), true.graph=as(read.dag("sim_graph_2_lat_pure_measure.r.txt"), "matrix"), cut.off=.3), n=1000)[3,])
-
-
-#set.seed(100);prune.fa.paths(factanal(x=create.dataset(n=1000), factors=2), cut.off=.3)[, c(10,9)]
-
-
-
-
-
-create.dataset <- function(file="sim_graph_2_lat_pure_measure.r.txt", n=1000){
-
-	results <- generate.data.from.dag(read.dag(file=file), n=n)
+	results <- generate.data.from.dag(read.dag(file=file, unif.min =unif.min, unif.max=unif.max), n=n)
 
 	##Removing latent variables from dataset.
 	results[,-grep(names(results), pattern="L")]
@@ -82,12 +29,11 @@ build.fofc.model <- function(data, TestType = "TETRAD_WISHART", fofcAlgorithm = 
 
 	nodes <- fofc$nodes
 
-	#print(nodes)
-	edges <- do.call(rbind, lapply(strsplit(fofc$edges, fixed=T, split=" "), function(edgestr){return(edgestr[c(1,3)])}))
-##
-#	print(edges)
 
-
+	if(length(fofc$edges)>0){
+		edges <- do.call(rbind, lapply(strsplit(fofc$edges, fixed=T, split=" "), function(edgestr){return(edgestr[c(1,3)])}))
+	}
+	else{edges <- list()}
 	adjMat <- matrix(nrow=length(nodes), ncol=length(nodes), data=0)
 	adjMat <- data.frame(adjMat)
 	names(adjMat) <- nodes
@@ -97,7 +43,7 @@ build.fofc.model <- function(data, TestType = "TETRAD_WISHART", fofcAlgorithm = 
 
 assemb.matrix <- function(empty.mat, edge.list){
 	result <- empty.mat
-
+	if(length(edge.list)==0){return(result)}
 	for(i in 1:nrow(edge.list)){
 		cause <- which(names(empty.mat)%in%edge.list[i, 1])
 		effect <- which(names(empty.mat)%in%edge.list[i, 2])
@@ -108,7 +54,6 @@ assemb.matrix <- function(empty.mat, edge.list){
 }
 
 
-## TODO: Need to fix scoring. Currently there seems to be an issue with the way latents are named. Both search model and true graph need to use same names for all nodes. Should also change/check this in FA scoring function.
 score.fofc <- function(fofc.model, true.graph){
 	
 	adj.matrix.true <- data.frame(true.graph)
@@ -120,7 +65,7 @@ score.fofc <- function(fofc.model, true.graph){
 
 	location.latents.true <- grep(pattern="L", names(adj.matrix.true))
 
-	## Strip out latent-latent edges as FA can't find these.
+	## Strips out latent-latent edges as FA can't find these.
 	true.graph[location.latents.true, location.latents.true] <- 0
 	
 	true.graph<-cbind(true.graph, true.graph[,location.latents.true])
@@ -169,13 +114,8 @@ score.fa <- function(fa.model, cut.off=.3, true.graph){
 
 	fa.model.backup <- fa.model	
 
-##print(true.graph)
-
-
-
-
 	location.latents.true <- grep(pattern="^L", x=names(data.frame(true.graph)))
-#print(location.latents.true)
+
 	## Strip out latent-latent edges as FA can't find these.
 	true.graph[location.latents.true, location.latents.true] <- 0
 	
@@ -206,15 +146,10 @@ address.mislab <- function(graph.comparison, fa.model, true.graph, fa.model.back
 	permutations <- rbind(1:n.latents, permute::allPerms(1:n.latents))+n.var
 
 	comparisons <- t(apply(permutations, 1, function(new.order){compareGraphs(igraph.to.graphNEL(graph.adjacency(fa.model.backup[c(1:n.var, new.order),])), true.graph)}))
-##print("fa.model.backup")
-##print(fa.model.backup)
-
-##print("true.graph")
-##print(as(true.graph, "matrix"))
 
 	## The third column in the matrix comparisons are true discovery rates. Then select the first max row (in case of a tie).
 	best.graph.comparison <- comparisons[which(comparisons[,3] == max(comparisons[,3]))[1], ]
-plot(fa.model)
+##plot(fa.model)
 	return(best.graph.comparison)
 }
 
@@ -283,17 +218,28 @@ prune.fa.paths <- function(fa.model, cut.off=.3){
 
 
 # converts the Tetrad .r.txt representation to a graphNEL object.
-read.dag <- function(file){
+read.dag <- function(file, unif.min =1, unif.max=1){
 	orig.mat <- read.table(file=file)
 	
 	orig.mat[orig.mat==1] <-0
 	orig.mat[orig.mat==-1] <-1
+
+
+	ind <- which(orig.mat==1, arr.ind=TRUE)
+	## Allows edge weights to vary randomly (drawn from uniform distribution).
+	for(i in 1:nrow(ind)){
+		orig.mat[ind[i,1], ind[i,2]] <- runif(n=1, unif.min, unif.max)
+	}
+
+#	print(E(graph.adjacency(as.matrix(orig.mat), weighted=TRUE))$weight)
+
 	
 
-	final.graph <- igraph.to.graphNEL(graph.adjacency(as.matrix(orig.mat)))
-
+	final.graph <- igraph.to.graphNEL(graph.adjacency(as.matrix(orig.mat), weighted=TRUE))
 	return(final.graph)
 }
+
+#read.dag("graph1.r.txt")
 
 
 # Takes in a graphNEL object, and generates normally distributed data from it.
@@ -301,12 +247,11 @@ generate.data.from.dag <- function(graph, n=100, errDist="normal"){
 
 	top.sort <- topological.sort(igraph.from.graphNEL(graph))
 	var.names <- nodes(graph)[top.sort]
-	
-	##TODO: Let edge weights vary (currently all are 1). Error distribution is always std. normal.
-	## Idea: if adj.mat has a 1, replace with runif(0.001,1,1).
+
+
 	graph<-igraph.to.graphNEL(graph.adjacency(as(graph, "matrix")[var.names,
 	 var.names]))
-	
+##	plot(graph)
 	generated.data<-data.frame(rmvDAG(dag=graph, n=n, errDist=errDist))
 	names(generated.data) <- var.names
 	
