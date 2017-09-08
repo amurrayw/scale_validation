@@ -12,9 +12,19 @@ source("call_fofc_from_r.R")
 source("generate_random_model.R")
 
 
-create.dataset <- function(file="sim_graph_2_lat_pure_measure.r.txt", n=1000, unif.min =1, unif.max=1){
+create.dataset.from.file <- function(file="sim_graph_2_lat_pure_measure.r.txt", n=1000, unif.min =1, unif.max=1){
 
 	results <- generate.data.from.dag(read.dag(file=file, unif.min =unif.min, unif.max=unif.max), n=n)
+
+	##Removing latent variables from dataset.
+	results[,-grep(names(results), pattern="L")]
+
+}
+
+
+create.dataset.from.graph <- function(graph, n=1000){
+
+	results <- generate.data.from.dag(graph, n=n)
 
 	##Removing latent variables from dataset.
 	results[,-grep(names(results), pattern="L")]
@@ -25,7 +35,7 @@ create.dataset <- function(file="sim_graph_2_lat_pure_measure.r.txt", n=1000, un
 build.fofc.model <- function(data, TestType = "TETRAD_WISHART", fofcAlgorithm = "GAP", 
     alpha = .01){
 
-	fofc <- fofc(loadContinuousData(df=data), TestType, fofcAlgorithm, alpha)	
+	fofc <- fofc(df=data, TestType, fofcAlgorithm, alpha)	
 
 	nodes <- fofc$nodes
 

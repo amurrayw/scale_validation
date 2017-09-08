@@ -1,5 +1,6 @@
 library(foreign)
 
+
 source("simulation_fofc_vs_fa.R")
 
 ####TEMP DATA GSS 2012
@@ -50,3 +51,32 @@ fofc(df=loadContinuousData(sapply(Tests, as.numeric)[complete.cases(Tests),]), a
 
 
 #####
+library(EFAutilities)
+data(BFI228)
+BFI228 <- apply(BFI228, 2, as.numeric)
+
+plot(build.fofc.model(BFI228, alpha=.01))
+
+##Associates all 8 with the latent they're supposed to go with. Idea: Only run FOFC on set of variables hypothesized to be related already. May also need to discuss permuting columns (due to a path dependency)?
+plot(build.fofc.model(BFI228[,1:8], alpha=.000001)) 
+
+## Following the rule Joe and Erich recommend does not do so (4 remain unclustered).
+plot(build.fofc.model(BFI228[,1:8], alpha=1/nrow(BFI228)))
+
+data(CPAI537)
+CPAI537 <- apply(CPAI537, 2, as.numeric)
+plot(build.fofc.model(CPAI537, alpha=.01))
+
+###
+library(OpenMx)
+data("HS.ability.data")
+#sapply(HS.ability.data[complete.cases(HS.ability.data),-c(1:6)], as.numeric)
+
+plot(build.fofc.model(sapply(HS.ability.data[complete.cases(HS.ability.data),-c(1:6)], as.numeric), alpha=.01)) ###This one looks like it should be a two factor (bifactor model). FTFC would be more appropriate. Can't tell if the orig. paper came to the same conclusion, but the title of it suggests that it might have: "Holzinger, K., and Swineford, F. (1939). A study in factor analysis: The stability of a bifactor solution"
+
+
+
+
+
+
+

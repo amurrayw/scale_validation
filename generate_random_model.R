@@ -16,15 +16,15 @@ generate.measurement.model <- function(n.latents=1, n.measures.per.latent=4, n.i
 		created.latents[[chosen.permutations[1]]] <- connect.latents(created.latents[[chosen.permutations[1]]], created.latents[[chosen.permutations[2]]])
 	}
 	else{
-	for(i in 1:nrow(chosen.permutations)){
-		if(nrow(chosen.permutations)==0){break}
-		cause <- chosen.permutations[i, 1]
-		effect <- chosen.permutations[i, 2]
+		for(i in 1:nrow(chosen.permutations)){
+			if(nrow(chosen.permutations)==0){break}
+			cause <- chosen.permutations[i, 1]
+			effect <- chosen.permutations[i, 2]
 
-		created.latents[[cause]] <- connect.latents(created.latents[[cause]], created.latents[[effect]])
+			created.latents[[cause]] <- connect.latents(created.latents[[cause]], created.latents[[effect]])
 
+		}
 	}
-}
 
 	master.nodes <- unique(unlist(lapply(created.latents, function(cluster){return(cluster$nodes)})))
 	master.edges <- unlist(lapply(created.latents, function(cluster){return(cluster$edges)}))
@@ -76,7 +76,12 @@ connect.latents <- function(latent.cause=create.latent("L1"), latent.effect=crea
 }
 
 
-add.impurities <- function(latent.1, latent.2, shared.latent, output.output.edge){}
+add.impurities <- function(latent.1, latent.2, shared.latent, output.output.edge){
+
+
+
+
+}
 
 
 
