@@ -11,7 +11,7 @@ library(rlist)
 source("call_fofc_from_r.R")
 source("generate_random_model.R")
 
-
+    
 create.dataset.from.file <- function(file="sim_graph_2_lat_pure_measure.r.txt", n=1000, unif.min =1, unif.max=1){
 
 	results <- generate.data.from.dag(read.dag(file=file, unif.min =unif.min, unif.max=unif.max), n=n)
@@ -258,9 +258,8 @@ generate.data.from.dag <- function(graph, n=100, errDist="normal"){
 	top.sort <- topological.sort(igraph.from.graphNEL(graph))
 	var.names <- nodes(graph)[top.sort]
 
-
 	graph<-igraph.to.graphNEL(graph.adjacency(as(graph, "matrix")[var.names,
-	 var.names]))
+	 var.names], weighted=TRUE))
 ##	plot(graph)
 	generated.data<-data.frame(rmvDAG(dag=graph, n=n, errDist=errDist))
 	names(generated.data) <- var.names
@@ -268,6 +267,6 @@ generate.data.from.dag <- function(graph, n=100, errDist="normal"){
 	return(generated.data)
 }
 
-
+##generate.data.from.dag(read.dag(file="sim_graph_2_lat_pure_measure.r.txt", unif.min =.5, unif.max=1))
 
 

@@ -84,6 +84,10 @@ dev.off()
 
 
 
+## Based on these plots, increasing the number of measures improves EFA significantly. Sample size doesn't really seem to change results (just increases variablity a bit) -- Based on simulations with sample size set to 250 instead of 1000, which are excluded as are otherwise not very informative given number of plots produced. At 12 measures per latent, EFA works very well (almost always correct), at 8 still makes mostly errors when latents are correlated (3 latent-latent edges and 3 latent variable). As number of latent-latent edges decreases, corelation between latents will decrease (more likely to end up with latents indep. of one another). Fewer measures are needed per latent when there are fewer latent-latent edges.
+
+
+
 test.fofc.n.latents <- function(n.latent=3, n.measures.per.latent=4, n.latent.latent.edges=3, sample.size = 1000,n.rep=500, alpha=.01){
 
     fofc.model <- replicate(build.fofc.model(create.dataset.from.graph(generate.measurement.model(n.latent=n.latent, n.measures.per.latent=n.measures.per.latent, n.latent.latent.edges=n.latent.latent.edges),n=sample.size), alpha=alpha), n=n.rep)
@@ -129,13 +133,43 @@ for(i in c(3, 2, 1, 0)){
 
 localenv <- environment() 
 
-pdf("FOFC_n_latents_boxplots.pdf")
+pdf("FOFC_n_latents_boxplots_samp_1000.pdf")
 
 do.call(grid.arrange, c(fofc.box.plots.results[1:2], fofc.box.plots.results[3:4], list(ncol=2, nrow=2)))
 
 dev.off()
 
 
+
+fofc.box.plots.results <- list()
+for(i in c(3, 2, 1, 0)){
+    fofc.box.plots.results[[i+1]]<- fofc.boxplots(n.latent.latent.edges=i, n.rep=500, sample.size=500)
+}
+
+localenv <- environment() 
+
+pdf("FOFC_n_latents_boxplots_samp_500.pdf")
+
+do.call(grid.arrange, c(fofc.box.plots.results[1:2], fofc.box.plots.results[3:4], list(ncol=2, nrow=2)))
+
+dev.off()
+
+
+
+fofc.box.plots.results <- list()
+for(i in c(3, 2, 1, 0)){
+    fofc.box.plots.results[[i+1]]<- fofc.boxplots(n.latent.latent.edges=i, n.rep=500, sample.size=250)
+}
+
+localenv <- environment() 
+
+pdf("FOFC_n_latents_boxplots_samp_250.pdf")
+
+do.call(grid.arrange, c(fofc.box.plots.results[1:2], fofc.box.plots.results[3:4], list(ncol=2, nrow=2)))
+
+dev.off()
+
+## Performance of FOFC goes down as sample size decreases. Also seems to get worse as number of latent-latent edges increases. Overall performance seems pretty similar to EFA in these cases with ~8-12 measures (though it does much better in the 4-8 measure, 2-3 latent-latent edge case). 
 
 ## EFA methods are: noc naf nparallel nkaiser.
 
