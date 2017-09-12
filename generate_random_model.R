@@ -1,18 +1,25 @@
 
 
-generate.measurement.model <- function(n.latents=1, n.measures.per.latent=4, n.impurities=list(n.sharing.latent=0, n.output.output.edges=0), n.latent.latent.edges=0){
+generate.measurement.model <- function(n.latents=1, n.measures.per.latent=4, n.impurities=list(n.sharing.latent=0, n.output.output.edges=0), n.latent.latent.edges=0, unif.min=1, unif.max=1){
 
 	created.latents <- list()
 	for(i in 1:n.latents){
 		created.latents[[i]] <- create.latent(latent.name=paste("L", i, sep=""),n.measures=n.measures.per.latent, naming.index=n.measures.per.latent*(i-1))
-	}
+	}## More than 2 latents causes produce.permutations to return matrix rather than vector, so need to handle differently.
+    if(n.latents>2){
+    	possible.permutations <- produce.permutations(1:n.latents, rand.remove.mirrors=TRUE)
+    
+	    chosen.permutations <- possible.permutations[sample(1:nrow(possible.permutations), replace=FALSE, size=n.latent.latent.edges), ]
+    }## If there are only 2 var. then need to check length(possible. perm), rather than nrow.
+    else if(n.latents==2){
+        possible.permutations <- produce.permutations(1:n.latents, rand.remove.mirrors=TRUE)
+        print(possible.permutations)
+	    chosen.permutations <- possible.permutations[sample(1:length(possible.permutations), replace=FALSE, size=2)]
 
-	possible.permutations <- produce.permutations(1:n.latents, rand.remove.mirrors=TRUE)
-
-	chosen.permutations <- possible.permutations[sample(1:nrow(possible.permutations), replace=FALSE, size=n.latent.latent.edges), ]
-
+        print(chosen.permutations)
+    }## If there is only 1 latent then don't need to permute.
+    else{chosen.permutations <- 1}
 	if(is.vector(chosen.permutations)){
-
 		created.latents[[chosen.permutations[1]]] <- connect.latents(created.latents[[chosen.permutations[1]]], created.latents[[chosen.permutations[2]]])
 	}
 	else{
@@ -29,7 +36,7 @@ generate.measurement.model <- function(n.latents=1, n.measures.per.latent=4, n.i
 	master.nodes <- unique(unlist(lapply(created.latents, function(cluster){return(cluster$nodes)})))
 	master.edges <- unlist(lapply(created.latents, function(cluster){return(cluster$edges)}))
 
-	result.graph <- convert.list.to.graph(list(nodes=master.nodes, edges=master.edges))
+	result.graph <- convert.list.to.graph(list(nodes=master.nodes, edges=master.edges, unif.min=unif.min, unif.max=unif.max))
 
 	## Graph has a cycle if can't tsort, tsort won't return all nodes, so length diff. implies regen. graph. Will have to see if performance is good enough as complexity of model increases.
 	if(length(topological.sort(igraph.from.graphNEL(result.graph)))!=length(nodes(result.graph))){
@@ -88,7 +95,7 @@ add.impurities <- function(latent.1, latent.2, shared.latent, output.output.edge
 
 create.edge <- function(cause, effect){return(paste(c(cause, " --> ", effect), sep="", collapse=""))}
 
-convert.list.to.graph <- function(latent.structure=create.latent()){
+convert.list.to.graph <- function(latent.structure=create.latent(), unif.min =1, unif.max=1){
 	
 
 	nodes <- latent.structure$nodes
@@ -102,17 +109,17 @@ convert.list.to.graph <- function(latent.structure=create.latent()){
 	adjMat <- data.frame(adjMat)
 	names(adjMat) <- nodes
 
-	return(igraph.to.graphNEL(graph.adjacency(as.matrix(assemb.matrix(adjMat, edges)))))
+	return(igraph.to.graphNEL(graph.adjacency(as.matrix(assemb.matrix(adjMat, edges, unif.min=unif.min, unif.max=unif.max)), weighted=TRUE)))
 	
 }
 
-assemb.matrix <- function(empty.mat, edge.list){
+assemb.matrix <- function(empty.mat, edge.list, unif.min =1, unif.max=1){
 	result <- empty.mat
 	if(length(edge.list)==0){return(result)}
 	for(i in 1:nrow(edge.list)){
 		cause <- which(names(empty.mat)%in%edge.list[i, 1])
 		effect <- which(names(empty.mat)%in%edge.list[i, 2])
-		result[cause, effect] <- 1
+		result[cause, effect] <- runif(n=1, min=unif.min, max=unif.max)
 	}
 	
 	return(result)

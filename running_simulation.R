@@ -176,6 +176,41 @@ dev.off()
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+compare.fofc.fa <- function(){
+
+
+    fofc.score <-  score.fofc(build.fofc.model(create.dataset.from.file(n=1000, file="graph1.r.txt")), true.graph=as(read.dag("graph1.r.txt"), "matrix"))
+
+
+    fa.score <- score.fa(factanal(x=create.dataset.from.file(n=1000, file="graph1.r.txt"), factors=3, rotation="promax"), true.graph=as(read.dag("graph1.r.txt"), "matrix"), cut.off=.3)
+
+    return(list(fofc.score = fofc.score, fa.score=fa.score))
+
+
+
+}
+
+
+
+compare.fofc.fa()
+
+
+
+
+
+
+
 table(replicate(as.numeric(names(which.max(table(unlist(nScree(x=create.dataset.from.graph(generate.measurement.model(n.latent=3, n.measures.per.latent=9, n.latent.latent.edges=3), n=1000), model="factors")$Components))))), n=1000))
 
 
