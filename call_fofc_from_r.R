@@ -5,6 +5,8 @@ library(rcausal)
 fofc <- function(df, TestType = "TETRAD_WISHART", fofcAlgorithm = "GAP", 
     alpha = .01, java.parameters = NULL){
      
+    df <- loadContinuousData(df)
+
     if(!is.null(java.parameters)){
         options(java.parameters = java.parameters)
         params <- c(java.parameters = java.parameters)

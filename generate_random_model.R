@@ -13,10 +13,10 @@ generate.measurement.model <- function(n.latents=1, n.measures.per.latent=4, n.i
     }## If there are only 2 var. then need to check length(possible. perm), rather than nrow.
     else if(n.latents==2){
         possible.permutations <- produce.permutations(1:n.latents, rand.remove.mirrors=TRUE)
-        print(possible.permutations)
+##        print(possible.permutations)
 	    chosen.permutations <- possible.permutations[sample(1:length(possible.permutations), replace=FALSE, size=2)]
 
-        print(chosen.permutations)
+##        print(chosen.permutations)
     }## If there is only 1 latent then don't need to permute.
     else{chosen.permutations <- 1}
 	if(is.vector(chosen.permutations)){

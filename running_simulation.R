@@ -121,7 +121,7 @@ fofc.boxplots <- function(n.latent=3, n.measures.per.latent=4, n.latent.latent.e
 
 }
 
-fofc.boxplots(n.rep=2)
+##fofc.boxplots(n.rep=2)
 
 
 
@@ -182,32 +182,94 @@ dev.off()
 
 
 
+#options(java.parameters = "-Xmx8000m")
 
 
 
-
-
-compare.fofc.fa <- function(){
-
-
-    fofc.score <-  score.fofc(build.fofc.model(create.dataset.from.file(n=1000, file="graph1.r.txt")), true.graph=as(read.dag("graph1.r.txt"), "matrix"))
-
-
-    fa.score <- score.fa(factanal(x=create.dataset.from.file(n=1000, file="graph1.r.txt"), factors=3, rotation="promax"), true.graph=as(read.dag("graph1.r.txt"), "matrix"), cut.off=.3)
-
+## Segfault from generate.measurement.model when n.latents=10.
+## Segfault from factanal when n.latents is 5 or larger.
+compare.fofc.fa <- function(n.latents=1, n.measures.per.latent=4, n.impurities=list(n.sharing.latent=0, n.output.output.edges=0), n.latent.latent.edges=sample(1:choose(n.latents, 2), size=1), unif.min=1, unif.max=1, cut.off=.3, sample.size=1000, rotation="promax"){
+print(n.latents)
+print(n.latent.latent.edges)
+print(0)
+    orig.graph <- generate.measurement.model(n.latents=n.latents, n.measures.per.latent=n.measures.per.latent, n.impurities=n.impurities, n.latent.latent.edges=n.latent.latent.edges, unif.min=unif.min, unif.max=unif.max)
+print(1)
+    dataset <- create.dataset.from.graph(orig.graph, n=sample.size)
+print(2)
+    fofc.graph <- build.fofc.model(data=dataset)
+print(3)
+    fofc.score <-  score.fofc(fofc.graph, true.graph=as(orig.graph, "matrix"))
+print(4)
+write.csv(dataset, file="debug/crashing_dataset.csv")
+    fa.graph <- factanal(x=dataset, factors=n.latents, rotation=rotation)
+print(5)
+    fa.score <-  score.fa(fa.graph, true.graph=as(orig.graph, "matrix"), cut.off=cut.off)
+print(6)
     return(list(fofc.score = fofc.score, fa.score=fa.score))
-
-
-
 }
 
 
 
-compare.fofc.fa()
+##compare.fofc.fa(n.latents=sample(1:4, size=1))
 
 
+pdf("edge_adj_results.pdf")
+
+##TODO: Turn this bit into a function. 
+
+promax.run <- replicate(compare.fofc.fa(n.latents=sample(1:4, size=1), unif.min=.01, rotation="promax", sample.size=500), n=100000)
 
 
+save.image()
+
+toplot<-(data.frame(do.call(promax.run[2,], what=rbind)))
+##reshape2::melt(toplot, id.vars = NULL)
+toplot<-reshape2::melt(toplot, id.vars = NULL)
+print(ggplot(toplot, aes(x=variable, y=value)) + geom_violin()+labs(title = "FA: 500 obs, promax rotation, 100000 replicates.", x="", y="Rate"))
+
+##+geom_jitter(height = 0, width = 0.1)
+
+toplot<-(data.frame(do.call(promax.run[1,], what=rbind)))
+##reshape2::melt(toplot, id.vars = NULL)
+
+##Removing cases where fofc got number of latents wrong and as a result, interp becomes difficult (and graph difficult.
+
+toplot <- toplot[-which(toplot[,c(1,3)]==0),] 
+##toplot <- toplot[-which(toplot[,2]==1),] 
+toplot<-reshape2::melt(toplot, id.vars = NULL)
+
+
+print(ggplot(toplot, aes(x=variable, y=value)) + geom_violin()+labs(title = "FOFC: 500 obs, alpha=.01, 100000 replicates.", x="", y="Rate"))
+
+##+geom_jitter(height = 0, width = 0.1)
+
+##TODO: Also try version with varimax rotation instead of promax
+
+##varimax
+
+varimax.run <- replicate(compare.fofc.fa(n.latents=sample(1:4, size=1), unif.min=.01, rotation="varimax", sample.size=500), n=1000)
+
+
+save.image()
+
+toplot<-(data.frame(do.call(varimax.run[2,], what=rbind)))
+##reshape2::melt(toplot, id.vars = NULL)
+toplot<-reshape2::melt(toplot, id.vars = NULL)
+print(ggplot(toplot, aes(x=variable, y=value)) + geom_violin()+ geom_violin()+labs(title = "FA: 500 obs, varimax rotation, 1000 replicates.", x="", y="Rate"))
+
+dev.off()
+##INTERP:
+
+   ##  tpr: True Positive Rate: Number of correctly found edges (in
+  ##        estimated graph) divided by number of true edges (in true
+ ##         graph)
+##
+  ##   fpr: False Positive Rate: Number of incorrectly found edges
+ ##         divided by number of true gaps (in true graph)
+##
+  ##   tdr: True Discovery Rate: Number of correctly found edges divided
+ ##         by number of found edges (both in estimated graph)
+##
 
 
 

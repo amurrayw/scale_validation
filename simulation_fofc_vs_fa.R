@@ -67,7 +67,6 @@ build.fofc.model <- function(data, TestType = "TETRAD_WISHART", fofcAlgorithm = 
 score.fofc <- function(fofc.model, true.graph){
 	
 	adj.matrix.true <- data.frame(true.graph)
-	
 	adj.matrix.fofc <- data.frame(as(fofc.model, "matrix"))
 	
 	n.latents.truth <- length(grep(pattern="L",
@@ -75,9 +74,9 @@ score.fofc <- function(fofc.model, true.graph){
 
 	location.latents.true <- grep(pattern="L", names(adj.matrix.true))
 
+
 	## Strips out latent-latent edges as FA can't find these.
 	true.graph[location.latents.true, location.latents.true] <- 0
-	
 	true.graph<-cbind(true.graph, true.graph[,location.latents.true])
 	true.graph<-true.graph[,-c(location.latents.true)]
 	true.graph<-rbind(true.graph, true.graph[location.latents.true,])
@@ -85,7 +84,13 @@ score.fofc <- function(fofc.model, true.graph){
 
 	n.latents.fofc <- length(location.latents.true)
 
-	true.graph<-igraph.to.graphNEL(graph.adjacency(true.graph))
+    true.graph<-data.frame(true.graph)
+
+
+    names(true.graph)[grep(pattern="V", names(true.graph))] <- paste("L", 1:n.latents.truth, sep="")
+    rownames(true.graph) <- names(true.graph)   
+
+	true.graph<-igraph.to.graphNEL(graph.adjacency(as(true.graph, "matrix")))
 
 	## Needs to be boolean, not integer for address.mislab function (converting adj.mat to graph fails otherwise).
 	fofc.model.backup <- adj.matrix.fofc>0
@@ -106,10 +111,7 @@ score.fofc <- function(fofc.model, true.graph){
 	return(c(0,1,0))
 }
 
-
-#score.fofc(build.fofc.model(create.dataset(n=1000, file="graph1.r.txt")), true.graph=as(read.dag("graph1.r.txt"), "matrix"))
-
-
+#score.fofc(build.fofc.model(create.dataset.from.file(n=1000, file="graph1.r.txt")), true.graph=as(read.dag("graph1.r.txt"), "matrix"))
 
 score.fa <- function(fa.model, cut.off=.3, true.graph){
 	
@@ -134,9 +136,13 @@ score.fa <- function(fa.model, cut.off=.3, true.graph){
 	true.graph<-rbind(true.graph, true.graph[location.latents.true,])
 	true.graph<-true.graph[-c(location.latents.true),]
 
+    ## Adds in the names of the moved latent variables, which can sometimes be lost.
+    true.graph<-data.frame(true.graph)
+    names(true.graph)[grep(pattern="V", names(true.graph))] <- paste("L", 1:length(location.latents.true), sep="")
+    rownames(true.graph) <- names(true.graph)
 
 	fa.model <- igraph.to.graphNEL(graph.adjacency(fa.model))
-	true.graph <- igraph.to.graphNEL(graph.adjacency(true.graph))
+	true.graph<-igraph.to.graphNEL(graph.adjacency(as(true.graph, "matrix")))
 
 	if(length(nodes(fa.model))==length(nodes(true.graph))){
 
