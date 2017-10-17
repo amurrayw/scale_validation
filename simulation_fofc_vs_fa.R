@@ -10,7 +10,7 @@ library(rlist)
 #setwd("~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/")
 source("call_fofc_from_r.R")
 source("generate_random_model.R")
-source("convert_graph_to_lavaan/convert_graph_to_lavan.R")
+source("convert_graph_to_lavaan/convert_graph_to_lavaan.R")
 
 create.dataset.from.file <- function(file="sim_graph_2_lat_pure_measure.r.txt", n=1000, unif.min =1, unif.max=1){
 
@@ -284,9 +284,14 @@ generate.data.from.dag <- function(graph, n=100, errDist="normal"){
 
 
 
+### Test portion for CFA. lavaan converter seems to work.
 
+set.seed(123)
+tmp.graph <- generate.measurement.model(n.latents=2)
+sem(convert.igraph.to.lavaan(igraph.from.graphNEL(tmp.graph)), generate.data.from.dag(tmp.graph))
 
-set.seed(123);lavaanify(convert.igraph.to.lavaan(igraph.from.graphNEL(generate.measurement.model(n.latents=2))))
+## Based, on plot, model seems to be read in correctly.
+semPlot::semPaths(sem(convert.igraph.to.lavaan(igraph.from.graphNEL(tmp.graph)), generate.data.from.dag(tmp.graph)))
 
 
 
