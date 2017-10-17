@@ -10,6 +10,7 @@ library(lavaan)
 
 ## for a given node, parse node names (variable and its parents) & structure into lavaan sem language. 
 ## E.g., x->y<-z, define "x, y, y~x+z". 
+## Note for latents, use "y=~x+z"
 
 
 
@@ -24,7 +25,6 @@ convert.igraph.to.lavaan <- function(graph.obj){
 
     graph.order <- topo_sort(graph.obj)
 
-
     lavaan.model <- c()
 
     for(node.index in graph.order){
@@ -37,7 +37,6 @@ convert.igraph.to.lavaan <- function(graph.obj){
             #lavaan.model <- c(lavaan.model, paste(current.node, "\n"))
         }
         else{
-
             lavaan.model <- c(lavaan.model, paste(current.node, "=~", paste(node.parents, sep="", collapse="+"), collapse=""))
     
         }
@@ -61,7 +60,7 @@ convert.igraph.to.lavaan <- function(graph.obj){
 
 get.parents <- function(current.node, adj.matrix){
 #print(adj.matrix)
-    return(which(adj.matrix[,current.node]>0))
+    return(which(adj.matrix[current.node,]>0))
 }
 
 get.node.names <- function(graph.obj){

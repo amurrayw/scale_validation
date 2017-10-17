@@ -10,8 +10,8 @@ library(rlist)
 #setwd("~/Dropbox/school/grad. school/gesis/2017/upload/scale_validation/")
 source("call_fofc_from_r.R")
 source("generate_random_model.R")
+source("convert_graph_to_lavaan/convert_graph_to_lavan.R")
 
-    
 create.dataset.from.file <- function(file="sim_graph_2_lat_pure_measure.r.txt", n=1000, unif.min =1, unif.max=1){
 
 	results <- generate.data.from.dag(read.dag(file=file, unif.min =unif.min, unif.max=unif.max), n=n)
@@ -274,5 +274,21 @@ generate.data.from.dag <- function(graph, n=100, errDist="normal"){
 }
 
 ##generate.data.from.dag(read.dag(file="sim_graph_2_lat_pure_measure.r.txt", unif.min =.5, unif.max=1))
+
+
+
+
+
+
+
+
+
+
+
+
+set.seed(123);lavaanify(convert.igraph.to.lavaan(igraph.from.graphNEL(generate.measurement.model(n.latents=2))))
+
+
+
 
 
