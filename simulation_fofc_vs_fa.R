@@ -424,7 +424,7 @@ false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+X4+X5+X6+X7+L2", "L2 =~ 
 ##> false.model
 ##[1] 93
 
-## Since the model is evidently not identifiable (I assume the edge parameters can't be narrowed down to a finite set), this error is too serious, as the fitting program will warn if it happens.
+## Since the model is evidently not identifiable (I assume the edge parameters can't be narrowed down to a finite set), this error isn't too serious, as the fitting program will warn if it happens.
 
 ## Trying case where latent-latent edge is mistakenly omitted but all latents of L2 are also assigned to L1.
 false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+X4+X4+X5+X6+X7", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph), orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
@@ -448,7 +448,7 @@ false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+X4+X5+X6+X7"), generate.
 
 ### So argument would be: EFA doesn't work well for det. number of latents, clustering with promax is somewhat worse than FOFC (though still need to try adding impurities). CFA is just SEM. Assuming number of latents is correct, preliminary results indicate can pick up false indep. claims and some misclustering, but cannot pick up (non-dep/indep adding) errors in latent-latent direction. This is all based on using chi-square test statistic (the p-value) to decide accept/reject model. Should then argue that such a method suffers from computational explosion (number of alternative models capable of being compared is large).  Note: This objection requires the misclustering detection (or impurity detection) to be weak.
 
-##Since  chi-square test statistics compares the null covariance matrix to the observed cov.mat, these results make sense. Indep is strongest, followed by by changes in the graph that add latent-latent edge coefficents to the path (i.e., tetrad const. violation stuff). 
+##Since  chi-square test statistics compares the null covariance matrix to the observed cov.mat, these results make sense. Indep is strongest, followed by by changes in the graph that add latent-latent edge coefficients to the path (i.e., tetrad const. violation stuff). 
 
 
 
