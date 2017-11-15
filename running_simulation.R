@@ -189,22 +189,22 @@ dev.off()
 ## Segfault from generate.measurement.model when n.latents=10.
 ## Segfault from factanal when n.latents is 5 or larger.
 compare.fofc.fa <- function(n.latents=1, n.measures.per.latent=4, n.impurities=list(n.sharing.latent=0, n.output.output.edges=0), n.latent.latent.edges=sample(1:choose(n.latents, 2), size=1), unif.min=1, unif.max=1, cut.off=.3, sample.size=1000, rotation="promax"){
-print(n.latents)
-print(n.latent.latent.edges)
-print(0)
+#print(n.latents)
+#print(n.latent.latent.edges)
+#print(0)
     orig.graph <- generate.measurement.model(n.latents=n.latents, n.measures.per.latent=n.measures.per.latent, n.impurities=n.impurities, n.latent.latent.edges=n.latent.latent.edges, unif.min=unif.min, unif.max=unif.max)
-print(1)
+#print(1)
     dataset <- create.dataset.from.graph(orig.graph, n=sample.size)
-print(2)
+#print(2)
     fofc.graph <- build.fofc.model(data=dataset)
-print(3)
+#print(3)
     fofc.score <-  score.fofc(fofc.graph, true.graph=as(orig.graph, "matrix"))
-print(4)
-write.csv(dataset, file="debug/crashing_dataset.csv")
+#print(4)
+#write.csv(dataset, file="debug/crashing_dataset.csv")
     fa.graph <- factanal(x=dataset, factors=n.latents, rotation=rotation)
-print(5)
+#print(5)
     fa.score <-  score.fa(fa.graph, true.graph=as(orig.graph, "matrix"), cut.off=cut.off)
-print(6)
+#print(6)
     return(list(fofc.score = fofc.score, fa.score=fa.score))
 }
 
@@ -322,4 +322,193 @@ hist(replicate(score.fa(factanal(x=create.dataset.from.file(n=1000), factors=2),
 
 
 #set.seed(100);prune.fa.paths(factanal(x=create.dataset.from.file(n=1000), factors=2), cut.off=.3)[, c(10,9)]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Test portion for CFA. lavaan converter seems to work.
+
+set.seed(123)
+tmp.graph <- generate.measurement.model(n.latents=2)
+sem(convert.igraph.to.lavaan(igraph.from.graphNEL(tmp.graph)), generate.data.from.dag(tmp.graph))
+
+## Based, on plot, model seems to be read in correctly.
+semPlot::semPaths(sem(convert.igraph.to.lavaan(igraph.from.graphNEL(tmp.graph)), generate.data.from.dag(tmp.graph)))
+
+###Test to see if chi-square test in lavaan can distinguish models with l1->l2 edge. 
+## Note, sample size is only 100.
+##false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph)))@test[[1]]$pvalue<=.05, n=1000))
+
+##true.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+L2", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph)))@test[[1]]$pvalue<=.05, n=1000))
+
+##> false.model
+##[1] 71
+##> true.model
+##[1] 67
+
+## Evidently, despite the false model implying that e.g., X4 is indep. of X1, chi-square rejects model about as often as true model. I hope I'm interpreting something wrong, as this is not a good result for CFA. As sample size was very small (100 obs), will try again with 1000 obs.
+##false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph, n=1000)))@test[[1]]$pvalue<=.05, n=1000))
+
+##true.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+L2", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph, n=1000)))@test[[1]]$pvalue<=.05, n=1000))
+
+
+##> false.model
+##[1] 57
+##> true.model
+##[1] 51
+
+##false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph, n=10000)))@test[[1]]$pvalue<=.05, n=1000))
+
+##true.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+L2", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph, n=10000)))@test[[1]]$pvalue<=.05, n=1000))
+
+##> false.model
+##[1] 62
+##> true.model
+##[1] 53
+
+##Turns out these results are due to lavaan treating latent variables as correlated by default. Need to set: orthogonal=TRUE in order to turn this behavior off.
+
+false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph,n=10000),orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+
+true.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+L2", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph,n=10000), orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+
+##At last, proper behavior! So, it looks like independence facts still matter.
+
+##> false.model
+##[1] 1000
+##> true.model
+##[1] 48
+
+
+##Lets try one where the false model wrongly swaps two variables between clusters (X0 and X4), but no indep. is violated.
+
+false.model <- sum(replicate((sem(c( "L1 =~ X4+X1+X2+X3+L2", "L2 =~ X0+X5+X6+X7"), generate.data.from.dag(tmp.graph),n=10000,orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+
+true.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+L2", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph,n=10000), orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+
+##> false.model
+##[1] 990
+##> true.model
+##[1] 44
+
+## Interesting, the rejection doesn't seem to be due to independence.
+
+## maybe result was due to first measure of each latent being set to 1 (so as to scale)?
+false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X7+L2", "L2 =~ X4+X5+X6+X3"), generate.data.from.dag(tmp.graph,n=10000),orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+
+##> false.model
+##[1] 1000
+
+#Nope! Seems to be able to pick up some cluster errors.
+
+## Test edge direction error: L2-> L1, not L1->L2
+
+false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3", "L2 =~ X4+X5+X6+X7+L1"), generate.data.from.dag(tmp.graph,n=10000), orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+
+## Doesn't seem to be able to figure out (some) errors in latent-latent direction.
+##> false.model
+##[1] 52
+
+
+## Clustering error where messes up 2 variables:
+
+false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X6+X7+L2", "L2 =~ X4+X5+X2+X3"), generate.data.from.dag(tmp.graph,n=10000),orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+##> false.model
+##[1] 1000
+
+
+## False impurity model:
+
+false.model <- try(sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+L2", "L2 =~ X4+X5+X6+X7", "X4~X5"), generate.data.from.dag(tmp.graph,n=10000), orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000)))
+
+## Doesn't seem able to detect false measure measure edge within the same cluster.
+##> false.model
+##[1] 61
+
+## False impurity, different clusters.
+false.model <- try(sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+L2", "L2 =~ X4+X5+X6+X7", "X4~X1"), generate.data.from.dag(tmp.graph,n=10000), orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000)))
+
+## Doesn't seem able to detect false measure measure edge between clusters.
+##> false.model
+##[1] 54
+
+
+## Clustering error where one variable is assigned to two clusters.
+false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+L2", "L2 =~ X4+X5+X6+X7+X2"), generate.data.from.dag(tmp.graph,n=10000), orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+
+## Doesn't seem to be able to pick up this kind of error.
+##> false.model
+##[1] 54
+
+## Clustering error where one variable is assigned to two clusters (other cluster has problem)
+false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+X6+L2", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph,n=10000), orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+
+## Which cluster the error is made with doesn't seem to matter.
+##> false.model
+##[1] 47
+
+
+## Clustering error where two variables are assigned to two clusters.
+false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+X6+X7+L2", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph,n=10000), orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+
+## Doesn't seem able to detect the false double clustering.
+##> false.model
+##[1] 42
+
+
+## Clustering error where all variables from one clsuter are assigned to two clusters.
+false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+X4+X5+X6+X7+L2", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph,n=10000), orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+
+## doesn't seem able to detect this, but note that produced 50+ warnings stating:
+##50: In lav_model_vcov(lavmodel = lavmodel, lavsamplestats = lavsamplestats,  ... :
+##  lavaan WARNING: could not compute standard errors!
+##  lavaan NOTE: this may be a symptom that the model is not identified.
+##> false.model
+##[1] 65
+
+## Since the model is evidently not identifiable (I assume the edge parameters can't be narrowed down to a finite set), this error isn't too serious, as the fitting program will warn if it happens.
+
+## Trying case where latent-latent edge is mistakenly omitted but all latents of L2 are also assigned to L1.
+false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+X4+X4+X5+X6+X7", "L2 =~ X4+X5+X6+X7"), generate.data.from.dag(tmp.graph,n=10000), orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+
+## Looks like chi-square also can't detect this situation.
+##> false.model
+##[1] 50
+
+
+
+## False two factor model:
+false.model <- sum(replicate((sem(c( "L1 =~ X0+X1+X2+X3+X4+X5+X6+X7"), generate.data.from.dag(tmp.graph,n=10000), orthogonal=TRUE))@test[[1]]$pvalue<=.05, n=1000))
+
+## Seems able to pick up this sort of error.
+##> false.model
+##[1] 1000
+
+
+
+
+
+### So argument would be: EFA doesn't work well for det. number of latents, clustering with promax is somewhat worse than FOFC (though still need to try adding impurities). CFA is just SEM. Assuming number of latents is correct, preliminary results indicate can pick up false indep. claims and some misclustering, but cannot pick up (non-dep/indep adding) errors in latent-latent direction. This is all based on using chi-square test statistic (the p-value) to decide accept/reject model. Should then argue that such a method suffers from computational explosion (number of alternative models capable of being compared is large).  Note: This objection requires the misclustering detection (or impurity detection) to be weak, which it seems to be.
+
+##Since  chi-square test statistics compares the null covariance matrix to the observed cov.mat, these results make sense. Indep is strongest, followed by by changes in the graph that add latent-latent edge coefficients to the path (i.e., tetrad const. violation stuff). 
+
+
+
+
 
